@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_news_app/data/api_client.dart';
+import 'package:flutter_news_app/navigation/directions.dart';
 import 'package:flutter_news_app/ui/di/di.dart';
 
 import '../data/category_model.dart';
@@ -23,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   var categories = <CategoryModel>[];
   var selectedCategoryId = 0;
   var mainPosts = <PostModel>[];
+  var error = false;
+  var loading = true;
 
   @override
   void initState() {
@@ -45,27 +49,31 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  color: backgroundColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: backgroundColor, width: 1)),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: const TextField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: "Search",
-                      hintStyle: TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: lightGrey),
-                      prefixIcon: Icon(Icons.search))),
-            ),
-          ),
+          ///[[[[[---------   BU QIDIRISH APIDA YO"Q ----------------]]]]]]]
+
+          // SliverToBoxAdapter(
+          //   child: Container(
+          //     margin: const EdgeInsets.all(16),
+          //     decoration: BoxDecoration(
+          //         color: backgroundColor,
+          //         borderRadius: BorderRadius.circular(16),
+          //         border: Border.all(color: backgroundColor, width: 1)),
+          //     padding: const EdgeInsets.symmetric(horizontal: 10),
+          //     child: const TextField(
+          //       maxLines: 1,
+          //       decoration: InputDecoration(
+          //         border: InputBorder.none,
+          //         hintText: "Search from Category",
+          //         hintStyle: TextStyle(
+          //             fontFamily: 'Nunito',
+          //             fontSize: 12,
+          //             fontWeight: FontWeight.w600,
+          //             color: lightGrey),
+          //         prefixIcon: Icon(Icons.search),
+          //       ),
+          //     ),
+          //   ),
+          // ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -108,15 +116,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              width: double.infinity,
-              height: 240,
-              child: CarouselSlider(
-                options: CarouselOptions(
-                    autoPlay: true, aspectRatio: 2.0, enlargeCenterPage: true),
-                items: getPostSlider(latestPosts), //news
-              ),
-            ),
+            child: Builder(builder: (context) {
+              if (loading) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+              return SizedBox(
+                width: double.infinity,
+                height: 240,
+                child: CarouselSlider(
+                  options: CarouselOptions(
+                      autoPlay: true,
+                      aspectRatio: 2.0,
+                      enlargeCenterPage: true),
+                  items: getPostSlider(latestPosts), //news
+                ),
+              );
+            }),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -129,8 +146,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
                     return GestureDetector(
-                      onTap: (){
+                      onTap: () {
                         selectedCategoryId = categories[index].id;
+                        loadPosts(categories[index].id, 30);
                         setState(() {});
                       },
                       child: Container(
@@ -148,9 +166,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 fontFamily: 'Nunito',
-                                color: categories[index].id == selectedCategoryId
-                                    ? Colors.white
-                                    : primaryTextColor),
+                                color:
+                                    categories[index].id == selectedCategoryId
+                                        ? Colors.white
+                                        : primaryTextColor),
                           ),
                         ),
                       ),
@@ -160,31 +179,103 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          SliverList(
+          Builder(builder: (context) {
+            if (error) {
+              return SliverToBoxAdapter(
+                child: CachedNetworkImage(
+                  imageUrl:
+                      "https://media.tenor.com/Wv6zVQPZFtcAAAAd/error.gif",
+                ),
+              );
+            }
+            if (loading) {
+              return const SliverToBoxAdapter(
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+            return SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
-            return Container(
-              margin: const EdgeInsets.symmetric(vertical: 4,horizontal: 16),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-              child: Image.network(mainPosts[index].image, fit: BoxFit.fill),
+                return Builder(
+                  builder: (context) {
+                    return GestureDetector(
+                      onTap: (){ toInfoScreen(context, mainPosts[index]); },
+                      child: Container(
+                          margin:
+                              const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+                          decoration:
+                              BoxDecoration(borderRadius: BorderRadius.circular(8)),
+                          child: Stack(
+                            children: [
+                              Image.network(mainPosts[index].image, fit: BoxFit.fill),
+                              Positioned(
+                                bottom: 1,
+                                child: Container(
+                                  alignment: AlignmentDirectional.bottomCenter,
+                                  transformAlignment: Alignment.bottomCenter,
+                                  width: 400,
+                                  padding: const EdgeInsets.all(20),
+                                  child: Text(
+                                    mainPosts[index].title,
+                                    style: const TextStyle(
+                                        backgroundColor: Colors.black87,
+                                        color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                            ],
+                          )),
+                    );
+                  }
+                );
+              }, childCount: mainPosts.length),
             );
-          }, childCount: mainPosts.length))
+          }),
         ],
       ),
     ));
   }
 
   Future<void> loadCategory() async {
-    categories = await newsClient.getCategories();
+    loading = true;
+    var result = await newsClient.getCategories();
+    print(result.isFailure);
+    error = result.isFailure;
+    if (result.isSuccess) {
+      categories = result.success;
+      loading = false;
+    } else {
+      error = true;
+    }
+
     setState(() {});
   }
 
   Future<void> loadPosts(int categoryId, int limit) async {
-    mainPosts = await newsClient.getPostsByCategory(categoryId, limit);
+    loading = true;
+    var result = await newsClient.getPostsByCategory(categoryId, limit);
+
+    error = result.isFailure;
+    if (result.isSuccess) {
+      mainPosts = result.success;
+      loading = false;
+    } else {
+      error = true;
+    }
     setState(() {});
   }
 
   Future<void> loadLatestPosts() async {
-    latestPosts = await newsClient.getPostsByCategory(0, 10);
+    var result = await newsClient.getPostsByCategory(0, 10);
+
+    error = result.isFailure;
+    if (result.isSuccess) {
+      latestPosts = result.success;
+    } else {
+      error = true;
+    }
     setState(() {});
   }
 }
