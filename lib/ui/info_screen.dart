@@ -13,7 +13,9 @@ class InfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Info Screen"),),
-      body: Html(data: model.content),
+      body: SingleChildScrollView(
+        child: Html(data: model.content),
+      ),
     );
   }
 
